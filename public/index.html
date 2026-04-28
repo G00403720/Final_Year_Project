@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Fitness Planner</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <header class="topnav">
+    <div class="topnav-logo">
+      <span class="logo-text">FITNESS PLANNER</span>
+    </div>
+    <nav class="topnav-links">
+      <a href="#" class="nav-item active" data-view="planner"></a>
+      <a href="#" class="nav-item" data-view="workouts"></a>
+      <a href="#" class="nav-item" data-view="create"></a>
+    </nav>
+    <div class="topnav-stat">
+      workouts created:
+      <span id="nav-total-workouts">0</span> 
+    </div>
+  </header>
+
+  <main class="main-content">
+
+    <!-- WEEKLY PLANNER -->
+    <section class="view active" id="view-planner">
+
+      <div class="view-header">
+        <div>
+          <h1 class="view-title">Weekly Planner</h1>
+          <p class="view-sub">Schedule workouts for each day of the week.</p>
+        </div>
+        <div class="week-nav">
+          <button class="week-btn" id="prev-week">&#8592;</button>
+          <span class="week-label" id="week-label"></span>
+          <button class="week-btn" id="next-week">&#8594;</button>
+        </div>
+      </div>
+
+      <div class="planner-actions" id="planner-actions">
+        <button class="btn-primary" id="btn-goto-create"> Create Workout</button>
+        <button class="btn-secondary" id="btn-goto-workouts"> All Workouts</button>
+      </div>
+
+      <div class="planner-table" id="planner-table"></div>
+
+    </section>
+
+    <!-- CREATE / EDIT WORKOUT  -->
+    <section class="view" id="view-create">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title" id="form-view-title">Create Workout</h1>
+          <p class="view-sub">Fill in the details below and save.</p>
+        </div>
+      </div>
+      <div class="form-card">
+        <input type="hidden" id="edit-id" value="">
+        <div class="form-grid">
+          <div class="form-group full">
+            <label class="form-label">Workout Name <span class="required">*</span></label>
+            <input type="text" class="form-input" id="f-name" placeholder="e.g. Morning Push Day" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Target Area <span class="required">*</span></label>
+            <select class="form-input" id="f-target">
+              <option value="">— Select target —</option>
+              <option>Chest</option>
+              <option>Back</option>
+              <option>Shoulders</option>
+              <option>Arms</option>
+              <option>Legs</option>
+              <option>Core</option>
+              <option>Cardio</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Reps / Time <span class="required">*</span></label>
+            <input type="text" class="form-input" id="f-reps" placeholder="e.g. 3×10 or 30 min" />
+          </div>
+          <div class="form-group full">
+            <label class="form-label">Equipment</label>
+            <input type="text" class="form-input" id="f-equipment" placeholder="e.g. Dumbbell" />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn-secondary" id="cancel-form">Cancel</button>
+          <button class="btn-primary" id="save-workout">Save Workout</button>
+        </div>
+      </div>
+    </section>
+
+    <!--  ALL WORKOUTS  -->
+    <section class="view" id="view-workouts">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title">All Workouts</h1>
+          <p class="view-sub">Browse, edit or delete your saved workouts.</p>
+        </div>
+        <button class="btn-primary" id="goto-create-from-list">+ New Workout</button>
+      </div>
+      <div class="search-bar-wrap">
+        <input type="text" class="search-input" id="workout-search" placeholder="Search by name or target…" />
+      </div>
+      <div class="workout-table-wrap">
+  <table class="workout-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Target</th>
+        <th>Reps / Time</th>
+        <th>Equipment</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="workout-tbody"></tbody>
+  </table>
+</div>
+      <div class="empty-state" id="empty-workouts" style="display:none;">
+        <div class="empty-icon">🏋️</div>
+        <p>No workouts yet. Create your first one!</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: Assign Workout to Day -->
+  <div class="modal-overlay" id="assign-modal" style="display:none;">
+    <div class="modal">
+      <h2 class="modal-title">Add to <span id="modal-day-label"></span></h2>
+      <p class="modal-sub">Pick a workout to add to this day:</p>
+      <div class="modal-table-wrap">
+  <table class="modal-workout-table">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Target</th>
+        <th>Reps / Time</th>
+        <th>Equipment</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="modal-workout-list"></tbody>
+  </table>
+</div>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="close-assign-modal">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Confirm Delete -->
+  <div class="modal-overlay" id="delete-modal" style="display:none;">
+    <div class="modal modal-sm">
+      <h2 class="modal-title">Delete Workout?</h2>
+      <p class="modal-sub" id="delete-modal-msg">This will permanently remove the workout and unschedule it from all days.</p>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="cancel-delete">Cancel</button>
+        <button class="btn-danger" id="confirm-delete">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
