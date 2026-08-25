@@ -3,10 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <title>Fitness Planner</title>
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
+  <!-- Header -->
   <header class="topnav">
     <div class="topnav-logo">
       <span class="logo-text">FITNESS PLANNER</span>
@@ -16,9 +17,16 @@
       <a href="#" class="nav-item" data-view="workouts"></a>
       <a href="#" class="nav-item" data-view="create"></a>
     </nav>
-    <div class="topnav-stat">
-      workouts created:
-      <span id="nav-total-workouts">0</span> 
+    <div class="topnav-right">
+      <div class="topnav-stat">workouts created: <span id="nav-total-workouts">0</span></div>
+      <div class="account-box">
+        <div>
+          <strong id="account-name">Loading...</strong>
+          <span id="account-email"></span>
+        </div>
+        <button class="btn-secondary logout-btn" id="logout-btn" type="button">Logout</button>
+        <button class="btn-danger delete-account-btn" id="delete-account-btn" type="button">Delete Account</button>
+      </div>
     </div>
   </header>
 
@@ -99,7 +107,10 @@
           <h1 class="view-title">All Workouts</h1>
           <p class="view-sub">Browse, edit or delete your saved workouts.</p>
         </div>
-        <button class="btn-primary" id="goto-create-from-list">+ New Workout</button>
+        <div class="view-header-actions">
+          <button class="btn-secondary" id="goto-home-from-list">← Home</button>
+          <button class="btn-primary" id="goto-create-from-list">+ New Workout</button>
+        </div>
       </div>
       <div class="search-bar-wrap">
         <input type="text" class="search-input" id="workout-search" placeholder="Search by name or target…" />
@@ -159,6 +170,19 @@
       <div class="modal-actions">
         <button class="btn-secondary" id="cancel-delete">Cancel</button>
         <button class="btn-danger" id="confirm-delete">Delete</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- MODAL: Confirm Account Delete -->
+  <div class="modal-overlay" id="delete-account-modal" style="display:none;">
+    <div class="modal modal-sm">
+      <h2 class="modal-title">Delete Account?</h2>
+      <p class="modal-sub">This permanently deletes your email/account, workouts and weekly schedule. This cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="cancel-account-delete" type="button">Cancel</button>
+        <button class="btn-danger" id="confirm-account-delete" type="button">Delete Account</button>
       </div>
     </div>
   </div>

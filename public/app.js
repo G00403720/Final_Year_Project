@@ -6,11 +6,27 @@ let skipFormReset   = false;
 
 const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 
+//Connects frontend to backend for API
 async function apiFetch(url, options = {}) {
-  const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options
-  });
+  const token = localStorage.getItem('token');
+  if (!token) {
+    window.location.href = '/login.html';
+    throw new Error('You must be logged in.');
+  }
+
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options.headers || {}),
+    Authorization: `Bearer ${token}`
+  };
+  const res = await fetch(url, { ...options, headers });
+
+  if (res.status === 401) {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/login.html';
+    throw new Error('Your login has expired.');
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error || 'Request failed');
@@ -18,6 +34,45 @@ async function apiFetch(url, options = {}) {
   return res.json();
 }
 
+// Loads the signed-in user into the header
+async function loadCurrentUser() {
+  const user = await apiFetch('/api/auth/me');
+  document.getElementById('account-name').textContent = user.name;
+  document.getElementById('account-email').textContent = user.email;
+}
+
+function logout() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  window.location.href = '/login.html';
+}
+
+function openDeleteAccountModal() {
+  document.getElementById('delete-account-modal').style.display = 'flex';
+}
+
+function closeDeleteAccountModal() {
+  document.getElementById('delete-account-modal').style.display = 'none';
+}
+
+async function deleteAccount() {
+  const button = document.getElementById('confirm-account-delete');
+  button.disabled = true;
+  button.textContent = 'Deleting...';
+
+  try {
+    await apiFetch('/api/auth/account', { method: 'DELETE' });
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/login.html?deleted=1';
+  } catch (err) {
+    showToast(err.message, 'error');
+    button.disabled = false;
+    button.textContent = 'Delete Account';
+  }
+}
+
+//Load all data on startup
 async function loadAll() {
   try {
     [workouts, schedule] = await Promise.all([
@@ -69,6 +124,7 @@ async function apiRemoveFromSchedule(date, index) {
   if (schedule[date]) schedule[date].splice(index, 1);
 }
 
+//Starts on monday
 function getMonday(d) {
   const date = new Date(d);
   const day  = date.getDay();
@@ -77,12 +133,14 @@ function getMonday(d) {
   return date;
 }
 
+//moves forward/backward in time
 function addDays(d, n) {
   const r = new Date(d);
   r.setDate(r.getDate() + n);
   return r;
 }
 
+//changes date format 
 function toKey(d)       { return d.toISOString().slice(0, 10); }
 function getWorkout(id) { return workouts.find(w => w.id === id); }
 
@@ -103,7 +161,7 @@ function escHtml(str) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-/* ── TOAST ── */
+/* Notification */
 function showToast(msg, type = 'success') {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -117,6 +175,7 @@ function updateNavStat() {
   document.getElementById('nav-total-workouts').textContent = workouts.length;
 }
 
+//Shows page 
 function showView(id) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -145,11 +204,12 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
 
 
 document.getElementById('goto-create-from-list').addEventListener('click', () => showView('create'));
+document.getElementById('goto-home-from-list').addEventListener('click', () => showView('planner'));
 
 document.getElementById('btn-goto-create').addEventListener('click', () => showView('create'));
 document.getElementById('btn-goto-workouts').addEventListener('click', () => showView('workouts'));
 
-/*  WEEKLY PLANNER */
+/*  Builds weekly planner */
 function renderPlanner() {
 const table = document.getElementById('planner-table');
 table.innerHTML = '';
@@ -163,7 +223,7 @@ const key = toKey(day);
 const items = schedule[key] || [];
 
 
-/* ── HEADER ── */
+/*  Creates table Header  */
 const th = document.createElement('th');
 th.innerHTML = `
   ${DAYS[i]}<br>
@@ -171,10 +231,10 @@ th.innerHTML = `
 `;
 headerRow.appendChild(th);
 
-/* ── CELL ── */
+/*  Creates cell column for each day  */
 const td = document.createElement('td');
 
-/* workouts */
+/* Displays workouts in that day */
 items.forEach((wid, idx) => {
   const w = getWorkout(wid);
   if (!w) return;
@@ -208,7 +268,7 @@ table.appendChild(headerRow);
 table.appendChild(bodyRow);
 }
 
-
+//Add to schedule
 async function addToSchedule(dateKey, wid) {
 const updated = [...(schedule[dateKey] || []), wid];
 
@@ -218,13 +278,13 @@ await loadAll();
 renderPlanner();
 }
 
+//Remove from schedule
 async function removeFromSchedule(dateKey, idx) {
 await apiRemoveFromSchedule(dateKey, idx);
 
 await loadAll();       
 renderPlanner();
 }
-
 
 /*  Week navigation  */
 document.getElementById('prev-week').addEventListener('click', () => {
@@ -406,6 +466,7 @@ document.getElementById('save-workout').addEventListener('click', async () => {
 
 document.getElementById('cancel-form').addEventListener('click', () => showView('workouts'));
 
+//shake if there is an error
 function shakeInput(id) {
   const el = document.getElementById(id);
   el.style.borderColor = 'var(--red)';
@@ -416,6 +477,18 @@ function shakeInput(id) {
 
 /* INIT */
 (async () => {
-await loadAll();
-renderPlanner();
+  if (!localStorage.getItem('token')) {
+    window.location.href = '/login.html';
+    return;
+  }
+  document.getElementById('logout-btn')?.addEventListener('click', logout);
+  document.getElementById('delete-account-btn')?.addEventListener('click', openDeleteAccountModal);
+  document.getElementById('cancel-account-delete')?.addEventListener('click', closeDeleteAccountModal);
+  document.getElementById('confirm-account-delete')?.addEventListener('click', deleteAccount);
+  document.getElementById('delete-account-modal')?.addEventListener('click', event => {
+    if (event.target === document.getElementById('delete-account-modal')) closeDeleteAccountModal();
+  });
+  await loadCurrentUser();
+  await loadAll();
+  renderPlanner();
 })();
