@@ -1,0 +1,14 @@
+[
+  {
+    "id": "mt99vhxqdu62a",
+    "name": "chi",
+    "email": "chi@gmail.com",
+    "passwordHash": "$2b$12$gQpeWHqpESIv0A0uXN7zGObhwXSRZ/jkAGhDjdOyU0LI0faxL8rSe"
+  },
+  {
+    "id": "mt99zhhsabhbk",
+    "name": "drake",
+    "email": "drake@gmail.com",
+    "passwordHash": "$2b$12$A.87KEqWVUa3dM4oXeKJZ.3Qsn758EvM/l2q.5rgVgvIrcg/B4hlG"
+  }
+]

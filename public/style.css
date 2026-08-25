@@ -653,3 +653,20 @@ select.form-input option { background: var(--bg3); }
   .pt-day-name { font-size: 12px; }
   .pt-day-date { font-size: 9px; }
 }
+
+.account-user {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+#account-name {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+#account-email {
+  color: var(--text-muted);
+  font-size: 12px;
+}

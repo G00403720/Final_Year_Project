@@ -1,34 +1,9 @@
 [
   {
-    "id": "mo35j1waelcaw",
-    "name": "push ups",
-    "target": "Chest",
-    "reps": "3x12",
-    "equipment": "",
-    "notes": ""
-  },
-  {
-    "id": "mo3j9tqmig5rx",
+    "id": "mok5i91834tsl",
     "name": "sit ups",
-    "target": "Core / Abs",
+    "target": "Core",
     "reps": "3x10",
-    "equipment": "none",
-    "notes": ""
-  },
-  {
-    "id": "mod0cthpo0lvv",
-    "name": "plank",
-    "target": "Core / Abs",
-    "reps": "1min",
-    "equipment": "",
-    "notes": ""
-  },
-  {
-    "id": "mod0kyi1y3rjv",
-    "name": "bicep curls",
-    "target": "Arms",
-    "reps": "3x10",
-    "equipment": "dumbell",
-    "notes": ""
+    "equipment": "none"
   }
 ]

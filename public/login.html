@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login | FitWeek</title>
+  <link rel="stylesheet" href="/auth.css">
+</head>
+<body>
+  <main class="auth-shell">
+    <section class="auth-card">
+      <div class="brand">FITWEEK</div>
+      <h1>Welcome back</h1>
+      <p class="sub">Log in to view your workouts and weekly plan.</p>
+
+      <form id="loginForm">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="email" required>
+
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required>
+
+        <button type="submit">Log in</button>
+        <div class="message" id="message"></div>
+      </form>
+
+      <div class="switch">Don't have an account? <a href="/register.html">Register</a></div>
+    </section>
+  </main>
+
+  <script src="/auth.js"></script>
+  <script>
+    if (new URLSearchParams(window.location.search).get('deleted') === '1') {
+      const message = document.getElementById('message');
+      message.textContent = 'Account deleted successfully.';
+      message.style.color = '#3dffa0';
+    }
+
+    document.getElementById('loginForm').addEventListener('submit', async event => {
+      event.preventDefault();
+      const message = document.getElementById('message');
+      message.textContent = '';
+
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: document.getElementById('email').value,
+          password: document.getElementById('password').value
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        message.textContent = data.error || 'Login failed.';
+        return;
+      }
+
+      saveSession(data);
+      window.location.href = '/';
+    });
+  </script>
+</body>
+</html>
