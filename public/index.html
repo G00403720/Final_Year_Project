@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Fitness Planner</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-  <!-- Header -->
   <header class="topnav">
     <div class="topnav-logo">
       <span class="logo-text">FITNESS PLANNER</span>
@@ -16,11 +16,12 @@
       <a href="#" class="nav-item active" data-view="planner"></a>
       <a href="#" class="nav-item" data-view="workouts"></a>
       <a href="#" class="nav-item" data-view="create"></a>
+      <a href="#" class="nav-item" data-view="groups"></a>
     </nav>
     <div class="topnav-right">
       <div class="topnav-stat">workouts created: <span id="nav-total-workouts">0</span></div>
       <div class="account-box">
-        <div>
+        <div class="account-user">
           <strong id="account-name">Loading...</strong>
           <span id="account-email"></span>
         </div>
@@ -34,11 +35,10 @@
 
     <!-- WEEKLY PLANNER -->
     <section class="view active" id="view-planner">
-
       <div class="view-header">
         <div>
           <h1 class="view-title">Weekly Planner</h1>
-          <p class="view-sub">Schedule workouts for each day of the week.</p>
+          <p class="view-sub">Schedule workouts or groups for each day of the week.</p>
         </div>
         <div class="week-nav">
           <button class="week-btn" id="prev-week">&#8592;</button>
@@ -48,15 +48,15 @@
       </div>
 
       <div class="planner-actions" id="planner-actions">
-        <button class="btn-primary" id="btn-goto-create"> Create Workout</button>
-        <button class="btn-secondary" id="btn-goto-workouts"> All Workouts</button>
+        <button class="btn-primary" id="btn-goto-create">Create Workout</button>
+        <button class="btn-secondary" id="btn-goto-workouts">All Workouts</button>
+        <button class="btn-secondary" id="btn-goto-groups">Groups</button>
       </div>
 
-      <div class="planner-table" id="planner-table"></div>
-
+      <table class="planner-table" id="planner-table"></table>
     </section>
 
-    <!-- CREATE / EDIT WORKOUT  -->
+    <!-- CREATE / EDIT WORKOUT -->
     <section class="view" id="view-create">
       <div class="view-header">
         <div>
@@ -69,19 +69,14 @@
         <div class="form-grid">
           <div class="form-group full">
             <label class="form-label">Workout Name <span class="required">*</span></label>
-            <input type="text" class="form-input" id="f-name" placeholder="e.g. Morning Push Day" />
+            <input type="text" class="form-input" id="f-name" placeholder="e.g. Push Ups" />
           </div>
           <div class="form-group">
             <label class="form-label">Target Area <span class="required">*</span></label>
             <select class="form-input" id="f-target">
               <option value="">— Select target —</option>
-              <option>Chest</option>
-              <option>Back</option>
-              <option>Shoulders</option>
-              <option>Arms</option>
-              <option>Legs</option>
-              <option>Core</option>
-              <option>Cardio</option>
+              <option>Chest</option><option>Back</option><option>Shoulders</option>
+              <option>Arms</option><option>Legs</option><option>Core</option><option>Cardio</option>
             </select>
           </div>
           <div class="form-group">
@@ -100,15 +95,16 @@
       </div>
     </section>
 
-    <!--  ALL WORKOUTS  -->
+    <!-- ALL WORKOUTS -->
     <section class="view" id="view-workouts">
       <div class="view-header">
         <div>
           <h1 class="view-title">All Workouts</h1>
-          <p class="view-sub">Browse, edit or delete your saved workouts.</p>
+          <p class="view-sub">Browse, add to a group, edit or delete your saved workouts.</p>
         </div>
         <div class="view-header-actions">
           <button class="btn-secondary" id="goto-home-from-list">← Home</button>
+          <button class="btn-secondary" id="goto-groups-from-list">Groups</button>
           <button class="btn-primary" id="goto-create-from-list">+ New Workout</button>
         </div>
       </div>
@@ -116,53 +112,92 @@
         <input type="text" class="search-input" id="workout-search" placeholder="Search by name or target…" />
       </div>
       <div class="workout-table-wrap">
-  <table class="workout-table">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Target</th>
-        <th>Reps / Time</th>
-        <th>Equipment</th>
-        <th>Actions</th>
-      </tr>
-    </thead>
-    <tbody id="workout-tbody"></tbody>
-  </table>
-</div>
+        <table class="workout-table">
+          <thead>
+            <tr>
+              <th>Name</th><th>Target</th><th>Reps / Time</th><th>Equipment</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="workout-tbody"></tbody>
+        </table>
+      </div>
       <div class="empty-state" id="empty-workouts" style="display:none;">
-        <div class="empty-icon">🏋️</div>
         <p>No workouts yet. Create your first one!</p>
+      </div>
+    </section>
+
+    <!-- GROUPS -->
+    <section class="view" id="view-groups">
+      <div class="view-header">
+        <div>
+          <h1 class="view-title">Groups</h1>
+          <p class="view-sub">Create workout groups, manage their workouts and schedule them as one item.</p>
+        </div>
+        <div class="view-header-actions">
+          <button class="btn-secondary" id="goto-home-from-groups">← Home</button>
+          <button class="btn-secondary" id="goto-workouts-from-groups">All Workouts</button>
+        </div>
+      </div>
+
+      <div class="group-create-card">
+        <h2>Create Group</h2>
+        <div class="group-create-grid">
+          <div class="form-group">
+            <label class="form-label" for="group-name">Group Name <span class="required">*</span></label>
+            <input class="form-input" id="group-name" type="text" placeholder="e.g. Push Day" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="group-description">Description <span class="optional">(optional)</span></label>
+            <input class="form-input" id="group-description" type="text" placeholder="" />
+          </div>
+          <button class="btn-primary group-create-btn" id="create-group" type="button">Create Group</button>
+        </div>
+      </div>
+
+      <div class="groups-grid" id="groups-list"></div>
+      <div class="empty-state" id="empty-groups" style="display:none;">
+        <p>No groups yet. Create one above.</p>
       </div>
     </section>
 
   </main>
 
-  <!-- MODAL: Assign Workout to Day -->
+  <!-- MODAL: Assign Workout/Group to Day -->
   <div class="modal-overlay" id="assign-modal" style="display:none;">
-    <div class="modal">
+    <div class="modal assign-modal-wide">
       <h2 class="modal-title">Add to <span id="modal-day-label"></span></h2>
-      <p class="modal-sub">Pick a workout to add to this day:</p>
+      <p class="modal-sub">Choose a workout or a group to add to this day.</p>
+
+      <h3 class="modal-section-title">Workouts</h3>
       <div class="modal-table-wrap">
-  <table class="modal-workout-table">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>Target</th>
-        <th>Reps / Time</th>
-        <th>Equipment</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody id="modal-workout-list"></tbody>
-  </table>
-</div>
+        <table class="modal-workout-table">
+          <thead><tr><th>Name</th><th>Target</th><th>Reps / Time</th><th>Equipment</th><th></th></tr></thead>
+          <tbody id="modal-workout-list"></tbody>
+        </table>
+      </div>
+
+      <h3 class="modal-section-title groups-modal-heading">Groups</h3>
+      <div class="modal-group-list" id="modal-group-list"></div>
+
       <div class="modal-actions">
         <button class="btn-secondary" id="close-assign-modal">Close</button>
       </div>
     </div>
   </div>
 
-  <!-- MODAL: Confirm Delete -->
+  <!-- MODAL: Add Workout to Group -->
+  <div class="modal-overlay" id="add-to-group-modal" style="display:none;">
+    <div class="modal">
+      <h2 class="modal-title">Add Workout to Group</h2>
+      <p class="modal-sub">Add <strong id="add-to-group-workout-name"></strong> to one of your groups.</p>
+      <div class="group-choice-list" id="group-choice-list"></div>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="close-add-to-group-modal">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Confirm Workout Delete -->
   <div class="modal-overlay" id="delete-modal" style="display:none;">
     <div class="modal modal-sm">
       <h2 class="modal-title">Delete Workout?</h2>
@@ -174,12 +209,23 @@
     </div>
   </div>
 
+  <!-- MODAL: Confirm Group Delete -->
+  <div class="modal-overlay" id="delete-group-modal" style="display:none;">
+    <div class="modal modal-sm">
+      <h2 class="modal-title">Delete Group?</h2>
+      <p class="modal-sub" id="delete-group-msg">The group will be deleted and removed from the planner. The workouts themselves will not be deleted.</p>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="cancel-group-delete">Cancel</button>
+        <button class="btn-danger" id="confirm-group-delete">Delete Group</button>
+      </div>
+    </div>
+  </div>
 
   <!-- MODAL: Confirm Account Delete -->
   <div class="modal-overlay" id="delete-account-modal" style="display:none;">
     <div class="modal modal-sm">
       <h2 class="modal-title">Delete Account?</h2>
-      <p class="modal-sub">This permanently deletes your email/account, workouts and weekly schedule. This cannot be undone.</p>
+      <p class="modal-sub">This permanently deletes your email/account, workouts, groups and weekly schedule. This cannot be undone.</p>
       <div class="modal-actions">
         <button class="btn-secondary" id="cancel-account-delete" type="button">Cancel</button>
         <button class="btn-danger" id="confirm-account-delete" type="button">Delete Account</button>
@@ -188,7 +234,6 @@
   </div>
 
   <div class="toast" id="toast"></div>
-
   <script src="app.js"></script>
 </body>
 </html>

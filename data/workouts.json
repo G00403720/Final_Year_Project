@@ -5,5 +5,21 @@
     "target": "Core",
     "reps": "3x10",
     "equipment": "none"
+  },
+  {
+    "id": "mtc2zdv0953mj",
+    "userId": "mt99vhxqdu62a",
+    "name": "push ups",
+    "target": "Chest",
+    "reps": "2x12",
+    "equipment": ""
+  },
+  {
+    "id": "mtc41i22pk1xx",
+    "userId": "mt99vhxqdu62a",
+    "name": "dumbell curl",
+    "target": "Arms",
+    "reps": "3x15",
+    "equipment": "Dumbell"
   }
 ]
