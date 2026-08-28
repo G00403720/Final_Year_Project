@@ -9,15 +9,15 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'fitweek-fitness-planner';
 
-// Where data is stored
 const DATA_DIR = process.env.DATA_DIR
   ? path.resolve(process.env.DATA_DIR)
   : path.join(__dirname, 'data');
+
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
 const WORKOUTS_FILE = path.join(DATA_DIR, 'workouts.json');
+const GROUPS_FILE = path.join(DATA_DIR, 'groups.json');
 const SCHEDULE_FILE = path.join(DATA_DIR, 'schedule.json');
 
-// Creates files if they do not exist
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 function ensureJsonFile(file, initialData) {
@@ -28,6 +28,7 @@ function ensureJsonFile(file, initialData) {
 
 ensureJsonFile(USERS_FILE, []);
 ensureJsonFile(WORKOUTS_FILE, []);
+ensureJsonFile(GROUPS_FILE, []);
 ensureJsonFile(SCHEDULE_FILE, {});
 
 function readJson(file, fallback) {
@@ -42,28 +43,33 @@ function readJson(file, fallback) {
 }
 
 function writeJson(file, data) {
-  // Write to a temporary file first, then replace the real file. 
-  // Reduces the chance of losing account data if Node is stopped while saving.
   const tempFile = `${file}.tmp`;
   fs.writeFileSync(tempFile, JSON.stringify(data, null, 2), 'utf8');
   fs.copyFileSync(tempFile, file);
   fs.unlinkSync(tempFile);
 }
 
-
 function readUsers() {
-  const users = readJson(USERS_FILE, []);
-  return Array.isArray(users) ? users : [];
+  const data = readJson(USERS_FILE, []);
+  return Array.isArray(data) ? data : [];
 }
 function writeUsers(data) { writeJson(USERS_FILE, data); }
+
 function readWorkouts() {
-  const workouts = readJson(WORKOUTS_FILE, []);
-  return Array.isArray(workouts) ? workouts : [];
+  const data = readJson(WORKOUTS_FILE, []);
+  return Array.isArray(data) ? data : [];
 }
 function writeWorkouts(data) { writeJson(WORKOUTS_FILE, data); }
+
+function readGroups() {
+  const data = readJson(GROUPS_FILE, []);
+  return Array.isArray(data) ? data : [];
+}
+function writeGroups(data) { writeJson(GROUPS_FILE, data); }
+
 function readSchedule() {
-  const schedule = readJson(SCHEDULE_FILE, {});
-  return schedule && typeof schedule === 'object' && !Array.isArray(schedule) ? schedule : {};
+  const data = readJson(SCHEDULE_FILE, {});
+  return data && typeof data === 'object' && !Array.isArray(data) ? data : {};
 }
 function writeSchedule(data) { writeJson(SCHEDULE_FILE, data); }
 
@@ -83,9 +89,7 @@ function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization || '';
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
-  if (!token) {
-    return res.status(401).json({ error: 'You must be logged in.' });
-  }
+  if (!token) return res.status(401).json({ error: 'You must be logged in.' });
 
   try {
     req.user = jwt.verify(token, JWT_SECRET);
@@ -95,11 +99,18 @@ function requireAuth(req, res, next) {
   }
 }
 
+function normalizeScheduleItem(item) {
+  // Backwards compatibility: older schedules stored workout IDs as strings.
+  if (typeof item === 'string') return { type: 'workout', id: item };
+  if (!item || typeof item !== 'object') return null;
+  if (!['workout', 'group'].includes(item.type) || !item.id) return null;
+  return { type: item.type, id: String(item.id) };
+}
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 /* AUTH API */
-
 app.post('/api/auth/register', async (req, res) => {
   try {
     const name = String(req.body.name || '').trim();
@@ -109,7 +120,6 @@ app.post('/api/auth/register', async (req, res) => {
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Name, email and password are required.' });
     }
-
     if (password.length < 8) {
       return res.status(400).json({ error: 'Password must be at least 8 characters.' });
     }
@@ -119,21 +129,19 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(409).json({ error: 'An account with that email already exists.' });
     }
 
-    const passwordHash = await bcrypt.hash(password, 12);
     const user = {
       id: uid(),
       name,
       email,
-      passwordHash,
+      passwordHash: await bcrypt.hash(password, 12)
     };
 
     users.push(user);
     writeUsers(users);
 
-    const token = createToken(user);
     res.status(201).json({
-      token,
-      user: { id: user.id, name: user.name, email: user.email}
+      token: createToken(user),
+      user: { id: user.id, name: user.name, email: user.email }
     });
   } catch (err) {
     console.error(err);
@@ -151,10 +159,9 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Incorrect email or password.' });
     }
 
-    const token = createToken(user);
     res.json({
-      token,
-      user: { id: user.id, name: user.name, email: user.email}
+      token: createToken(user),
+      user: { id: user.id, name: user.name, email: user.email }
     });
   } catch (err) {
     console.error(err);
@@ -165,36 +172,30 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/me', requireAuth, (req, res) => {
   const user = readUsers().find(item => item.id === req.user.userId);
   if (!user) return res.status(404).json({ error: 'User not found.' });
-
   res.json({ id: user.id, name: user.name, email: user.email });
 });
 
-// Delete the currently signed-in account and all data that belongs to it.
 app.delete('/api/auth/account', requireAuth, (req, res) => {
+  const userId = req.user.userId;
   const users = readUsers();
-  const user = users.find(item => item.id === req.user.userId);
-
-  if (!user) {
+  if (!users.some(item => item.id === userId)) {
     return res.status(404).json({ error: 'User not found.' });
   }
 
-  writeUsers(users.filter(item => item.id !== req.user.userId));
-
-  const workouts = readWorkouts();
-  writeWorkouts(workouts.filter(workout => workout.userId !== req.user.userId));
+  writeUsers(users.filter(item => item.id !== userId));
+  writeWorkouts(readWorkouts().filter(workout => workout.userId !== userId));
+  writeGroups(readGroups().filter(group => group.userId !== userId));
 
   const schedule = readSchedule();
-  delete schedule[req.user.userId];
+  delete schedule[userId];
   writeSchedule(schedule);
 
   res.json({ success: true });
 });
 
 /* WORKOUTS API */
-
 app.get('/api/workouts', requireAuth, (req, res) => {
-  const workouts = readWorkouts().filter(workout => workout.userId === req.user.userId);
-  res.json(workouts);
+  res.json(readWorkouts().filter(workout => workout.userId === req.user.userId));
 });
 
 app.post('/api/workouts', requireAuth, (req, res) => {
@@ -207,10 +208,10 @@ app.post('/api/workouts', requireAuth, (req, res) => {
   const workout = {
     id: uid(),
     userId: req.user.userId,
-    name,
-    target,
-    reps,
-    equipment: equipment || ''
+    name: String(name).trim(),
+    target: String(target).trim(),
+    reps: String(reps).trim(),
+    equipment: String(equipment || '').trim()
   };
 
   workouts.push(workout);
@@ -223,7 +224,6 @@ app.put('/api/workouts/:id', requireAuth, (req, res) => {
   const i = workouts.findIndex(
     workout => workout.id === req.params.id && workout.userId === req.user.userId
   );
-
   if (i === -1) return res.status(404).json({ error: 'Workout not found.' });
 
   const { id, userId, ...allowedUpdates } = req.body;
@@ -233,51 +233,161 @@ app.put('/api/workouts/:id', requireAuth, (req, res) => {
 });
 
 app.delete('/api/workouts/:id', requireAuth, (req, res) => {
+  const userId = req.user.userId;
   let workouts = readWorkouts();
-  const workout = workouts.find(
-    item => item.id === req.params.id && item.userId === req.user.userId
-  );
-
+  const workout = workouts.find(item => item.id === req.params.id && item.userId === userId);
   if (!workout) return res.status(404).json({ error: 'Workout not found.' });
 
   workouts = workouts.filter(item => item.id !== req.params.id);
   writeWorkouts(workouts);
 
-  const schedule = readSchedule();
-  const userSchedule = schedule[req.user.userId] || {};
-  Object.keys(userSchedule).forEach(date => {
-    userSchedule[date] = userSchedule[date].filter(id => id !== req.params.id);
+  // Remove the deleted workout from every group owned by the user.
+  const groups = readGroups();
+  groups.forEach(group => {
+    if (group.userId === userId) {
+      group.workoutIds = (group.workoutIds || []).filter(id => id !== req.params.id);
+    }
   });
-  schedule[req.user.userId] = userSchedule;
+  writeGroups(groups);
+
+  // Remove directly scheduled copies of the workout.
+  const schedule = readSchedule();
+  const userSchedule = schedule[userId] || {};
+  Object.keys(userSchedule).forEach(date => {
+    userSchedule[date] = (userSchedule[date] || []).filter(item => {
+      const normalized = normalizeScheduleItem(item);
+      return !(normalized && normalized.type === 'workout' && normalized.id === req.params.id);
+    });
+  });
+  schedule[userId] = userSchedule;
   writeSchedule(schedule);
 
   res.json({ success: true });
 });
 
-/* SCHEDULE API  */
+/* GROUPS API */
+app.get('/api/groups', requireAuth, (req, res) => {
+  res.json(readGroups().filter(group => group.userId === req.user.userId));
+});
 
+app.post('/api/groups', requireAuth, (req, res) => {
+  const name = String(req.body.name || '').trim();
+  const description = String(req.body.description || '').trim();
+  if (!name) return res.status(400).json({ error: 'Group name is required.' });
+
+  const groups = readGroups();
+  const group = {
+    id: uid(),
+    userId: req.user.userId,
+    name,
+    description,
+    workoutIds: []
+  };
+
+  groups.push(group);
+  writeGroups(groups);
+  res.status(201).json(group);
+});
+
+app.post('/api/groups/:groupId/workouts/:workoutId', requireAuth, (req, res) => {
+  const groups = readGroups();
+  const group = groups.find(
+    item => item.id === req.params.groupId && item.userId === req.user.userId
+  );
+  if (!group) return res.status(404).json({ error: 'Group not found.' });
+
+  const workout = readWorkouts().find(
+    item => item.id === req.params.workoutId && item.userId === req.user.userId
+  );
+  if (!workout) return res.status(404).json({ error: 'Workout not found.' });
+
+  if (!Array.isArray(group.workoutIds)) group.workoutIds = [];
+  if (!group.workoutIds.includes(workout.id)) group.workoutIds.push(workout.id);
+  writeGroups(groups);
+  res.json(group);
+});
+
+app.delete('/api/groups/:groupId/workouts/:workoutId', requireAuth, (req, res) => {
+  const groups = readGroups();
+  const group = groups.find(
+    item => item.id === req.params.groupId && item.userId === req.user.userId
+  );
+  if (!group) return res.status(404).json({ error: 'Group not found.' });
+
+  group.workoutIds = (group.workoutIds || []).filter(id => id !== req.params.workoutId);
+  writeGroups(groups);
+  res.json(group);
+});
+
+app.delete('/api/groups/:id', requireAuth, (req, res) => {
+  const userId = req.user.userId;
+  let groups = readGroups();
+  const group = groups.find(item => item.id === req.params.id && item.userId === userId);
+  if (!group) return res.status(404).json({ error: 'Group not found.' });
+
+  groups = groups.filter(item => item.id !== req.params.id);
+  writeGroups(groups);
+
+  // Remove the deleted group from the planner wherever it was scheduled.
+  const schedule = readSchedule();
+  const userSchedule = schedule[userId] || {};
+  Object.keys(userSchedule).forEach(date => {
+    userSchedule[date] = (userSchedule[date] || []).filter(item => {
+      const normalized = normalizeScheduleItem(item);
+      return !(normalized && normalized.type === 'group' && normalized.id === req.params.id);
+    });
+  });
+  schedule[userId] = userSchedule;
+  writeSchedule(schedule);
+
+  res.json({ success: true });
+});
+
+/* SCHEDULE API */
 app.get('/api/schedule', requireAuth, (req, res) => {
   const schedule = readSchedule();
-  res.json(schedule[req.user.userId] || {});
+  const userSchedule = schedule[req.user.userId] || {};
+
+  // Always send the new object format to the browser.
+  const normalized = {};
+  Object.entries(userSchedule).forEach(([date, items]) => {
+    normalized[date] = Array.isArray(items)
+      ? items.map(normalizeScheduleItem).filter(Boolean)
+      : [];
+  });
+  res.json(normalized);
 });
 
 app.put('/api/schedule/:date', requireAuth, (req, res) => {
+  const userId = req.user.userId;
   const schedule = readSchedule();
-  if (!schedule[req.user.userId]) schedule[req.user.userId] = {};
+  if (!schedule[userId]) schedule[userId] = {};
 
   const ownedWorkoutIds = new Set(
-    readWorkouts()
-      .filter(workout => workout.userId === req.user.userId)
-      .map(workout => workout.id)
+    readWorkouts().filter(w => w.userId === userId).map(w => w.id)
+  );
+  const ownedGroupIds = new Set(
+    readGroups().filter(g => g.userId === userId).map(g => g.id)
   );
 
-  const workoutIds = Array.isArray(req.body.workoutIds)
-    ? req.body.workoutIds.filter(id => ownedWorkoutIds.has(id))
-    : [];
+  // New format: [{ type: 'workout'|'group', id: '...' }]
+  // Old workoutIds format is also accepted for compatibility.
+  const incoming = Array.isArray(req.body.items)
+    ? req.body.items
+    : (Array.isArray(req.body.workoutIds)
+      ? req.body.workoutIds.map(id => ({ type: 'workout', id }))
+      : []);
 
-  schedule[req.user.userId][req.params.date] = workoutIds;
+  const items = incoming
+    .map(normalizeScheduleItem)
+    .filter(item => item && (
+      (item.type === 'workout' && ownedWorkoutIds.has(item.id)) ||
+      (item.type === 'group' && ownedGroupIds.has(item.id))
+    ));
+
+  schedule[userId][req.params.date] = items;
   writeSchedule(schedule);
-  res.json({ workoutIds });
+  res.json({ items });
 });
 
 app.delete('/api/schedule/:date/:index', requireAuth, (req, res) => {
